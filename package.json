@@ -3,7 +3,7 @@
 	"dependencies": {
 		"accept-language-parser": "^1.4.1",
 		"express": "^4.14.0",
-		"request-ip": "^2.0.2"
+		"ua-parser-js": "^0.7.17"
 	},
 	"main": "server.js",
 	"scripts": {
