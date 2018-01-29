@@ -3,19 +3,7 @@
 const fs = require('fs');
 const express = require('express');
 const app = express();
-
-function transformDate(timestamp) {
-  if (timestamp === undefined) {
-    let response =  { "unix": null, "natural": null };
-    return response;
-  }
-  const locale = "en-us"
-  let date = new Date(timestamp),
-      unixDate = date.getTime() / 1000,
-      naturalDate = `${date.toLocaleString(locale, { month: "long" })} ${date.getDate()}, ${date.getFullYear()}`,
-      response =  { "unix": unixDate, "natural": naturalDate };
-  return response;
-}
+const langParser = require('accept-language-parser');
 
 if (!process.env.DISABLE_XORIGIN) {
   app.use(function(req, res, next) {
@@ -46,22 +34,15 @@ app.route('/')
 		  res.sendFile(process.cwd() + '/views/index.html');
     })
 
-app.route('/:time')
-    .get( (req,res) => {
-      const locale = "en-us" 
-      let timestamp = Date.parse(req.params.time)
-      let intTimestamp = parseInt(req.params.time)
-      if (!isNaN(timestamp)) {
-          let response = transformDate(timestamp);
-          res.json(response);
-      } else if (!isNaN(intTimestamp)) {
-          let response = transformDate(intTimestamp * 1000);
-          res.json(response);
-      } else {
-          let response = transformDate();
-          res.json(response);
-      }
-    })
+app.route('/api/whoami')
+    .get((req,res) => {
+      let ip = req.ip
+      let acceptLang = req.headers['accept-language']
+      let UA = req.headers['user-agent']
+      let parsedLang = langParser.parse(acceptLang)[0].code
+      let response = {"ipaddress": ip, "language": parsedLang, "software": UA}
+      res.json(response);
+    });
 
 // Respond not found to all the wrong routes
 app.use(function(req, res, next){
