@@ -2,7 +2,8 @@
 	"name": "fcc-learn-npm-package-json",
 	"dependencies": {
 		"accept-language-parser": "^1.4.1",
-		"express": "^4.14.0"
+		"express": "^4.14.0",
+		"request-ip": "^2.0.2"
 	},
 	"main": "server.js",
 	"scripts": {

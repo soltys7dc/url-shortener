@@ -4,6 +4,7 @@ const fs = require('fs');
 const express = require('express');
 const app = express();
 const langParser = require('accept-language-parser');
+const requestIp = require('request-ip');
 
 if (!process.env.DISABLE_XORIGIN) {
   app.use(function(req, res, next) {
@@ -34,12 +35,14 @@ app.route('/')
 		  res.sendFile(process.cwd() + '/views/index.html');
     })
 
+app.use(requestIp.mw())
+
 app.route('/api/whoami')
     .get((req,res) => {
-      let ip = req.ip
+      let ip = req.clientIp
       let acceptLang = req.headers['accept-language']
-      let UA = req.headers['user-agent']
       let parsedLang = langParser.parse(acceptLang)[0].code
+      let UA = req.headers['user-agent']
       let response = {"ipaddress": ip, "language": parsedLang, "software": UA}
       res.json(response);
     });
