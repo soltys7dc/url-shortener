@@ -1,9 +1,12 @@
 'use strict';
-
+const port = process.env.PORT || 3002;
 const fs = require('fs');
 const express = require('express');
 const app = express();
-const langParser = require('accept-language-parser');
+
+const MongoClient = require('mongodb').MongoClient;
+const mongoURL = process.env.MONGO_URL || 'mongodb://localhost:27017';
+const dbName = 'url-shortener';
 
 if (!process.env.DISABLE_XORIGIN) {
   app.use(function(req, res, next) {
@@ -31,19 +34,45 @@ app.route('/_api/package.json')
   
 app.route('/')
     .get(function(req, res) {
-		  res.sendFile(process.cwd() + '/views/index.html');
+      res.sendFile(process.cwd() + '/views/index.html');
     })
 
-app.route('/api/whoami')
+let connected = null;
+const connection = () => {
+  if (connected) {
+    return connected;
+  }
+  return connected = MongoClient.connect(mongoURL);
+}
+
+app.route('/new/*')
     .get((req,res) => {
-      const ipRegexp = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
-      const uaRegexp = /\(([^)]+)\)/;
-      let ip = req.ip.match(ipRegexp)[0];
-      let software =  req.headers['user-agent'].match(uaRegexp)[1];
-      let language = langParser.parse(req.headers['accept-language'])[0].code;
-      let response = {"ipaddress": ip, "language": language, "software": software};
-      res.json(response);
+      const urlRegex = /(https?):\/\/(-\.)?([^\s\/?\.#-]+\.?)+(\/[^\s]*)?/
+      const urlID = Math.floor(Math.random() * (9999 - 1111)) + 1111      
+      const url = req.path.match(urlRegex)[0]
+      const response = { "original_url": url, "short_url": `${req.headers.host}/${urlID}`}
+      connection()
+        .then((client) => {
+          const col = client.db(dbName).collection('URLs');
+          col.insertOne(Object.assign({"id": urlID}, response), {}, (err, result) => {
+            res.json(response);
+          })
+        })
+        .catch(console.error.bind(console));
     });
+
+app.route('/:id')
+  .get((req, res) => {
+    const id = req.params.id;
+    connection()
+      .then((client) => {
+        const col = client.db(dbName).collection('URLs');
+        col.findOne({"id": Number(id)}, (err, result) => {
+          res.redirect(result.original_url);
+        })
+      })
+      .catch(console.error.bind(console));
+  })
 
 // Respond not found to all the wrong routes
 app.use(function(req, res, next){
@@ -60,7 +89,6 @@ app.use(function(err, req, res, next) {
   }  
 })
 
-app.listen(process.env.PORT, function () {
+app.listen(port, function () {
   console.log('Node.js listening ...');
 });
-
